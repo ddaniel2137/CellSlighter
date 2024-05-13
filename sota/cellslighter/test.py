@@ -27,13 +27,10 @@ def main():
         cell_data_file='cell_data.h5ad',
         data_images_path='images_masks/img/',
         data_masks_path='images_masks/masks/',
-        crop_size=60
+        crop_size=120
     )
-    val_transform = v2.Compose([
-        v2.ToImage(), v2.ToDtype(torch.float32, scale=True)
-    ])
     crops = cell_crop_loader.prepare_cell_crops()
-    dataset = CellDataset(crops, val_transform)
+    dataset = CellDataset(crops)
     datamodule = CellDataModule(dataset, batch_size=1024)
     trainer = L.Trainer(
         devices=1,

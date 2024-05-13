@@ -1,7 +1,8 @@
 import torch.nn as nn
 import lightning as L
+import torchmetrics
 from torchvision import models
-from torchmetrics.classification import MulticlassAccuracy, MulticlassF1Score, Precision, AUROC
+from torchmetrics.classification import MulticlassAccuracy, MulticlassF1Score, AveragePrecision, AUROC
 import torch
 from icecream import ic
 import timm
@@ -21,22 +22,24 @@ class CellSlighter(L.LightningModule):
         self.weight_decay: float = weight_decay
         self.classes_num: int = classes_num
         self.accuracy_overall: MulticlassAccuracy = MulticlassAccuracy(
-            num_classes=self.classes_num
+            num_classes=self.classes_num,
+            average='macro',
         )
         self.f1_macro_overall: MulticlassF1Score = MulticlassF1Score(
             num_classes=self.classes_num,
-            average='macro'
+            average='macro',
+            zero_division=1.0
         )
-        self.precision_cell_avg: Precision = Precision(
+        self.precision_cell_avg: torchmetrics.Metric = AveragePrecision(
             'multiclass',
             num_classes=self.classes_num,
-            average='macro'
+            average='none'
         )
         # TODO:
         self.auroc_cell: AUROC = AUROC(
             'multiclass',
             num_classes=self.classes_num,
-            average='macro'
+            average='none'
         )
         # TODO:
         self.pool: nn.Module = nn.AdaptiveAvgPool2d(1)
@@ -97,12 +100,16 @@ class CellSlighter(L.LightningModule):
         # ic(y_hat)
         loss: torch.tensor = nn.functional.cross_entropy(y_hat, y)
         # ic(loss)
+        pred: torch.tensor = torch.softmax(y_hat[:, :14], dim=1).argmax(dim=1)
+        precision_classes: dict[str, AveragePrecision] = {f"avg_precision{k}": v for k, v in enumerate(self.precision_cell_avg(y_hat, y))}
+        auroc: dict[str, AUROC] = {f"auroc{k}": v for k, v in enumerate(self.auroc_cell(y_hat, y))}
+
         self.log_dict({
             "loss_train": loss,
-            "accuracy_train": self.accuracy_overall(y_hat, y),
-            "f1_macro_train": self.f1_macro_overall(y_hat, y),
-            "precision_cell_avg_train": self.precision_cell_avg(y_hat, y),
-            "auroc_cell_train": self.auroc_cell(y_hat, y)
+            "accuracy_train": self.accuracy_overall(pred, y),
+            "f1_macro_train": self.f1_macro_overall(pred, y),
+            **precision_classes,
+            **auroc
         }, logger=True, on_step=True, on_epoch=True, sync_dist=True)
         return loss
     
@@ -115,12 +122,14 @@ class CellSlighter(L.LightningModule):
         # ic(y_hat)
         loss: torch.tensor = nn.functional.cross_entropy(y_hat, y)
         # ic(loss)
+        precision_classes: dict[str, AveragePrecision] = {f"avg_precision{k}": v for k, v in enumerate(self.precision_cell_avg(y_hat, y))}
+        auroc: dict[str, AUROC] = {f"auroc{k}": v for k, v in enumerate(self.auroc_cell(y_hat, y))}
         self.log_dict({
             "loss_val": loss,
             "accuracy_val": self.accuracy_overall(y_hat, y),
             "f1_macro_val": self.f1_macro_overall(y_hat, y),
-            "precision_cell_avg_val": self.precision_cell_avg(y_hat, y),
-            "auroc_cell_val": self.auroc_cell(y_hat, y)
+            **precision_classes,
+            **auroc
         }, logger=True, on_step=True, on_epoch=True, sync_dist=True)
     
     def configure_optimizers(self):

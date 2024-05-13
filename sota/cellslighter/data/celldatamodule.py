@@ -32,19 +32,19 @@ class CellDataModule(L.LightningDataModule):
         return DataLoader(self.train, batch_size=self.batch_size, shuffle=False, drop_last=True,
                           num_workers=self.num_workers, pin_memory=self.pin_memory,
                           persistent_workers=self.persistent_workers, collate_fn=self.collate_fn)
-    
+
     def val_dataloader(self):
         return DataLoader(self.val, batch_size=self.batch_size, drop_last=True, num_workers=self.num_workers,
                           pin_memory=self.pin_memory, persistent_workers=self.persistent_workers,
                           collate_fn=self.collate_fn)
-        # TODO
-    
+        #TODO
+
     def test_dataloader(self):
         return DataLoader(self.test, batch_size=self.batch_size, drop_last=True, num_workers=self.num_workers,
                           pin_memory=self.pin_memory, persistent_workers=self.persistent_workers,
                           collate_fn=self.collate_fn)
-        # TODO
-    
+        #TODO
+
     @staticmethod
     def collate_fn(batch):
         masks, all_masks, images, labels = zip(*batch)
@@ -54,3 +54,4 @@ class CellDataModule(L.LightningDataModule):
         labels = torch.tensor(labels)
         aug = torch.cat((masks, all_masks, images), dim=1)
         return aug, labels
+    

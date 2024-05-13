@@ -28,11 +28,10 @@ class CellDataset(VisionDataset):
         label: torch.Tensor = torch.tensor(sample['label'], dtype=torch.uint8)
         x: List[torch.Tensor] = [mask, all_mask, image]
         if self.transform is not None:
-            [mask, all_mask, image] = self.transform(x)  # TODO: check if types are correct for v2
-            # transforms
-        return (mask, all_mask, image, label)  # TODO: remember that the labels are strings and we need to
+             [mask, all_mask, image] = self.transform(x)  # TODO: check if types are correct for v2
+                                                                             # transforms
+        return (mask, all_mask, image, label)   # TODO: remember that the labels are strings and we need to
         # use encoder to convert them to tensors!
-
 
 def create_subset_dataset(dataset: CellDataset, indices: List[int]) -> Subset:
     return Subset(dataset, indices)
